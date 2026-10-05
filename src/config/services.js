@@ -41,18 +41,40 @@ const DEFAULT_PROVIDERS = Object.freeze({
 });
 
 /**
- * Creates the core services the app uses directly, in dependency order.
+ * Resolves once the file auth provider has loaded its users, roles and
+ * sessions (it loads asynchronously from its constructor and signals with an
+ * event). Must be called synchronously after the provider is created so the
+ * event cannot be missed.
  *
- * Phase 0 wires logging, settings and authservice (the built-in login is what
- * protects the /services dashboards). Creating authservice also creates its
- * injected dependencies, caching and dataservice, with their default providers.
+ * @param {!EventEmitter} eventEmitter The registry's event emitter.
+ * @return {!Promise<void>} Rejects if the provider fails to initialise.
+ */
+function waitForAuthStorage(eventEmitter) {
+  return new Promise((resolve, reject) => {
+    const onReady = () => {
+      eventEmitter.off('auth:file-storage-initialization-error', onError);
+      resolve();
+    };
+    const onError = (event) => {
+      eventEmitter.off('auth:file-storage-initialized', onReady);
+      reject(new Error(`Auth storage failed to initialise: ${event?.error}`));
+    };
+    eventEmitter.once('auth:file-storage-initialized', onReady);
+    eventEmitter.once('auth:file-storage-initialization-error', onError);
+  });
+}
+
+/**
+ * Creates the core services the app uses directly, in dependency order.
  * Later phases add the remaining services here.
  *
  * @param {!Object} serviceRegistry The initialised nooblyjs-core registry.
  * @param {{dataRoot: string, env: !Object}} config Runtime paths and env.
- * @return {{logger: !Object, settings: !Object, authservice: !Object}}
+ * @return {{logger: !Object, settings: !Object, cache: !Object,
+ *     dataService: !Object, filing: !Object, authservice: !Object,
+ *     authReady: !Promise<void>, filesDir: string}}
  */
-function createCoreServices(serviceRegistry, { dataRoot }) {
+function createCoreServices(serviceRegistry, { dataRoot, env }) {
   // Level 0 — logging
   const logger = serviceRegistry.logger(DEFAULT_PROVIDERS.logging);
 
@@ -62,15 +84,29 @@ function createCoreServices(serviceRegistry, { dataRoot }) {
     filepath: path.join(dataRoot, 'settings', 'settings.enc.json')
   });
 
+  // Level 1 — caching: document detail cache (doc:{id}).
+  const cache = serviceRegistry.cache(DEFAULT_PROVIDERS.caching);
+
+  // Level 2 — dataservice: document metadata and the activity log.
+  const dataService = serviceRegistry.dataService(DEFAULT_PROVIDERS.dataservice);
+
+  // Level 3 — filing: document files on disk. Never the app root, which would
+  // expose .env and .application/data through the filing API.
+  const filesDir = path.resolve(env.FILING_BASE_DIR || path.join(dataRoot, 'files'));
+  require('node:fs').mkdirSync(filesDir, { recursive: true });
+  const filing = serviceRegistry.filing(DEFAULT_PROVIDERS.filing, { baseDir: filesDir });
+
   // Level 4 — authservice: users, roles and sessions in JSON files. A default
   // admin (admin@localhost) is created on first boot; its password comes from
-  // DEFAULT_ADMIN_PASSWORD or a 0600 bootstrap file under dataDir.
+  // DEFAULT_ADMIN_PASSWORD or a 0600 bootstrap file under dataDir. The core
+  // login always returns to /library (it overrides any returnUrl).
   const authservice = serviceRegistry.authservice(DEFAULT_PROVIDERS.authservice, {
     dataDir: path.join(dataRoot, 'data', 'auth'),
-    loginSuccessRedirectUrl: '/'
+    loginSuccessRedirectUrl: '/library'
   });
+  const authReady = waitForAuthStorage(serviceRegistry.getEventEmitter());
 
-  return { logger, settings, authservice };
+  return { logger, settings, cache, dataService, filing, authservice, authReady, filesDir };
 }
 
 /**

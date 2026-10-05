@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Knowledge Hub architecture overview</title>
+</head>
+<body>
+  <h1>Knowledge Hub architecture overview</h1>
+  <p>The Knowledge Hub is a single Node.js process. All backend capability comes from the NooblyJS Core service registry; the application adds a thin domain layer and a Bootstrap user interface.</p>
+  <h2>Layers</h2>
+  <ul>
+    <li><strong>Routes</strong> under <code>/api/v1</code> validate input and check permissions.</li>
+    <li><strong>Domain services</strong> such as the library service combine core services: filing stores files, the data service stores metadata, caching speeds up reads.</li>
+    <li><strong>Activities</strong> run in worker threads and must be pure: data in, data out.</li>
+  </ul>
+  <h2>Durability</h2>
+  <p>Most default providers keep data in memory. A snapshot written to the filing service every few minutes, and on shutdown, restores the library after a restart.</p>
+</body>
+</html>

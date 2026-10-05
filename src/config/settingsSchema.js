@@ -23,8 +23,7 @@ const SETTINGS_SCHEMA = Object.freeze({
   app: {
     description: 'General application settings',
     keys: {
-      name: { default: 'Noobly Knowledge Hub', type: 'string', description: 'Name shown in the header' },
-      allowRegistration: { default: false, type: 'boolean', description: 'Allow self-registration (otherwise invitation only)' }
+      name: { default: 'Noobly Knowledge Hub', type: 'string', description: 'Name shown in the header' }
     }
   },
   library: {

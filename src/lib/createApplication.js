@@ -32,6 +32,7 @@ const coreErrorHandler = require('nooblyjs-core/src/middleware/errorHandler');
 
 const { createCoreServices } = require('../config/services');
 const { ensureSettingsDefaults, readAllSettings } = require('./appSettings');
+const { createAuthGuards } = require('./auth');
 const pkg = require('../../package.json');
 
 // The auth providers register their serializers on the passport instance that
@@ -87,8 +88,10 @@ function resolveApiKeys(env, isProduction) {
  * @param {!Object=} options.env Environment variables (default process.env).
  * @param {string=} options.rootDir Repository root (default: two levels up).
  * @param {string=} options.dataRoot Runtime data root (default rootDir/.application).
+ * @param {boolean=} options.seedDemoContent Load seed/ into an empty library
+ *     (default: true unless SEED_DEMO_CONTENT=false).
  * @return {Promise<{app: !express.Application, serviceRegistry: !Object,
- *     services: !Object, health: !Object, logger: !Object,
+ *     services: !Object, health: !Object, logger: !Object, context: !Object,
  *     close: function(): !Promise<void>}>}
  * @throws {Error} When production secrets are missing.
  */
@@ -160,40 +163,61 @@ async function createApplication(options = {}) {
     }
   });
 
+  // The core lets any authenticated caller write through /services/filing/api.
+  // Restrict writes there to admins; registered before the filing routes so
+  // it runs first, and bound to the guards once authservice exists.
+  let guards = null;
+  app.use('/services/filing/api', (req, res, next) =>
+    (guards ? guards.requireAdminForFilingWrites(req, res, next) : next()));
+
   const services = createCoreServices(serviceRegistry, { dataRoot, env });
-  const { logger, settings } = services;
+  const { logger, settings, cache, dataService, filing } = services;
 
   if (generated) {
     logger.warn('[KnowledgeHub] DEVELOPMENT: generated a temporary API key. Set API_KEYS for real use.', {
       apiKey: generated
     });
   }
+  await services.authReady;
+  guards = createAuthGuards({ authservice: services.authservice, noAuth, logger });
   await ensureSettingsDefaults(settings, logger);
 
   // Health checks: /health, /health/live, /health/ready, /health/startup and
   // the admin-only /health/detailed. Ready only after live dependency probes.
   const setupHealthChecks = createHealthCheckMiddleware({
     logger,
-    criticalDependencies: ['settings'],
+    criticalDependencies: ['settings', 'cache', 'dataService', 'filing'],
     dependencyCheckers: {
-      settings: async () => typeof (await settings.get('name', 'app')) === 'string'
+      settings: async () => typeof (await settings.get('name', 'app')) === 'string',
+      cache: async () => {
+        await cache.put('__healthcheck__', '1');
+        return (await cache.get('__healthcheck__')) === '1';
+      },
+      dataService: async () => Number.isInteger(await dataService.count('documents')),
+      filing: async () => Array.isArray(await filing.list('.'))
     }
   });
   const health = setupHealthChecks(app, serviceRegistry.servicesAuthMiddleware);
 
   // appservice mounts every top-level .js file in src/services, src/data,
-  // src/routes and src/views, passing these options through to each one.
-  serviceRegistry.appservice('default', {
-    name: 'Knowledge Hub',
-    baseUrl: '/',
-    context: {
-      serviceRegistry,
-      services,
-      version: pkg.version,
-      noAuth,
-      readAllSettings: () => readAllSettings(settings)
-    }
-  });
+  // src/routes and src/views (in that order), passing these options through to
+  // each one. src/services/index.js adds context.domain and context.domainReady.
+  const context = {
+    serviceRegistry,
+    services,
+    guards,
+    rootDir,
+    version: pkg.version,
+    noAuth,
+    readAllSettings: () => readAllSettings(settings)
+  };
+  serviceRegistry.appservice('default', { name: 'Knowledge Hub', baseUrl: '/', context });
+  await context.domainReady;
+
+  const seedDemoContent = options.seedDemoContent ?? env.SEED_DEMO_CONTENT !== 'false';
+  if (seedDemoContent) {
+    await context.domain.seed.seedIfEmpty();
+  }
 
   // Unknown /api routes get a JSON 404 instead of the HTML default.
   app.use('/api', (req, res) => {
@@ -219,6 +243,7 @@ async function createApplication(options = {}) {
     services,
     health,
     logger,
+    context,
     async close() {
       await serviceRegistry.shutdown();
       await sessionStore.close();

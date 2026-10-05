@@ -30,4 +30,6 @@ Noobly Knowledge Hub is a sample app that uses all 16 `nooblyjs-core` services, 
 - **Logging:** use the injected logger with a `[ClassName]` prefix and structured metadata.
 - **Pages:** Bootstrap 5.3 + `/services/css/styles.css` + `/services/css/core.css` + `/css/app.css`. Use colour tokens (`var(--accent)`), not hex. No inline scripts; put JS in `src/views/public/js/`. Pages must work at 375 px.
 - **Output:** runtime data goes only in `.application/`; test output only in `.temp/` (`tests/helpers/testApp.js` gives each suite its own data root). Tests must close the app (`application.close()`) in `afterAll`.
+- **Tests:** `tests/helpers/jestSetup.js` sets `BCRYPT_COST=4`, because the core reads it at load and the production cost made auth-heavy hooks time out. `createTestApp` defaults to `seedDemoContent: false`. Unit tests use `tests/helpers/fakes.js` and the core's in-memory dataservice provider.
+- **Access:** members can read everything and change only their own documents; admins can change anything. Writes through `/services/filing/api` are admin-only.
 - **Commits:** conventional format, e.g. `feat(library): …`, `chore(phase-0): …`.

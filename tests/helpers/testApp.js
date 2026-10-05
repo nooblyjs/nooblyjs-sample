@@ -23,14 +23,16 @@ function testDataDir(label) {
 
 /**
  * Creates the application with test-safe settings.
- * @param {{label: string, noAuth: (boolean|undefined), env: (Object|undefined)}} options
+ * @param {{label: string, noAuth: (boolean|undefined), env: (Object|undefined),
+ *     seedDemoContent: (boolean|undefined)}} options
  * @return {Promise<{application: !Object, dataRoot: string}>}
  */
-async function createTestApp({ label, noAuth = false, env = {} }) {
+async function createTestApp({ label, noAuth = false, env = {}, seedDemoContent = false }) {
   const { createApplication } = require('../../src/lib/createApplication');
   const dataRoot = testDataDir(label);
   const application = await createApplication({
     noAuth,
+    seedDemoContent,
     rootDir: ROOT_DIR,
     dataRoot,
     env: {

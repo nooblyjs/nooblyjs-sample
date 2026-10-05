@@ -1,0 +1,14 @@
+{
+  "description": "Demo content loaded into an empty library on startup (SEED_DEMO_CONTENT=false disables it). Ids are fixed so restarts overwrite the same files.",
+  "documents": [
+    { "id": "seed-getting-started", "file": "getting-started.md", "title": "Getting started with the Knowledge Hub", "tags": ["onboarding", "guide"] },
+    { "id": "seed-onboarding-checklist", "file": "onboarding-checklist.md", "title": "New starter onboarding checklist", "tags": ["onboarding", "checklist"] },
+    { "id": "seed-service-registry", "file": "service-registry.md", "title": "How the service registry works", "tags": ["architecture", "nooblyjs"] },
+    { "id": "seed-architecture-overview", "file": "architecture-overview.html", "title": "Knowledge Hub architecture overview", "tags": ["architecture"] },
+    { "id": "seed-caching-guide", "file": "caching-guide.md", "title": "Caching guide", "tags": ["guide", "nooblyjs", "performance"] },
+    { "id": "seed-incident-runbook", "file": "incident-runbook.txt", "title": "Incident runbook", "tags": ["runbook", "operations"] },
+    { "id": "seed-release-checklist", "file": "release-checklist.pdf", "title": "Release checklist", "tags": ["checklist", "operations"] },
+    { "id": "seed-glossary", "file": "glossary.csv", "title": "Glossary", "tags": ["reference"] },
+    { "id": "seed-release-notes", "file": "release-notes.json", "title": "Release notes", "tags": ["reference", "releases"] }
+  ]
+}

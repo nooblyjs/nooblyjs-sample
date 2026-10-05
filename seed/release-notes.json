@@ -1,0 +1,22 @@
+{
+  "product": "Noobly Knowledge Hub",
+  "releases": [
+    {
+      "version": "0.2.0",
+      "date": "2026-10-05",
+      "highlights": [
+        "Document library with upload, edit, delete and download",
+        "Login through the NooblyJS auth service with admin and user roles",
+        "Demo content loaded on first start"
+      ]
+    },
+    {
+      "version": "0.1.0",
+      "date": "2026-10-05",
+      "highlights": [
+        "Application scaffold with health checks and encrypted settings",
+        "Home page showing the status of every core service"
+      ]
+    }
+  ]
+}

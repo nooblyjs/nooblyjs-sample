@@ -1,0 +1,64 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 736 >>
+stream
+BT
+/F1 12 Tf
+16 TL
+72 740 Td
+/F1 20 Tf
+(Release Checklist) Tj
+/F1 12 Tf
+T*
+() Tj
+T*
+(Use this checklist before every production release of a NooblyJS application.) Tj
+T*
+() Tj
+T*
+(1. All Jest suites pass and coverage meets the threshold.) Tj
+T*
+(2. Playwright smoke tests pass on desktop and mobile.) Tj
+T*
+(3. npm audit reports no high or critical vulnerabilities.) Tj
+T*
+(4. SESSION_SECRET, SETTINGS_SECRET and API_KEYS are set in the environment.) Tj
+T*
+(5. The Docker image builds and /health/ready returns 200.) Tj
+T*
+(6. Release notes are written and linked from the knowledge hub.) Tj
+T*
+(7. A rollback plan is agreed with the on-call engineer.) Tj
+T*
+() Tj
+T*
+(Owner: Platform team. Review this document every quarter.) Tj
+T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+xref
+0 6
+0000000000 65535 f
+0000000009 00000 n
+0000000058 00000 n
+0000000115 00000 n
+0000000241 00000 n
+0000001028 00000 n
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1125
+%%EOF

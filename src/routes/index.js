@@ -65,6 +65,19 @@ function createRoutes(type, options, eventEmitter) {
     }
   });
 
+  /**
+   * GET /api/v1/me — the signed-in user (email, name, roles, isAdmin) and the
+   * app name, for the page header. 401 when anonymous.
+   */
+  router.get('/me', context.guards.requireUser, async (req, res) => {
+    try {
+      const settingsValues = await context.readAllSettings();
+      res.json({ user: req.appUser, appName: settingsValues.app.name, noAuth: context.noAuth });
+    } catch (error) {
+      sendSafeError(res, error, { status: 500, eventEmitter });
+    }
+  });
+
   app.use('/api/v1', router);
 }
 

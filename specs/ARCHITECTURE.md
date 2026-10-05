@@ -78,8 +78,8 @@ nooblyjs-application-sample/
 │   │       ├── libraryService.js  ingestService.js  importService.js
 │   │       ├── searchService.js   aiService.js      notificationService.js
 │   │       └── digestService.js   snapshotService.js metricsService.js jobsService.js
-│   ├── data/                  # container names, record factories, validators
-│   │   └── index.js
+│   ├── data/
+│   │   └── models/            # records.js (shapes, validation), documentRepo.js, activityRepo.js
 │   ├── routes/                # /api/v1/* and page routes (mounted by appservice)
 │   │   ├── index.js
 │   │   ├── documents.js  imports.js  search.js  activity.js  admin.js
@@ -422,8 +422,8 @@ Errors follow the core convention: throw `ClientError(status, msg)`, then respon
 |---|---|
 | Transport and headers | `helmet` with core `helmetCspOption()`; `createServer` for optional HTTPS; `TRUST_PROXY` |
 | Browser sessions | `express-session` with core `createSessionStore` (pruning memory store; Redis when `SESSION_REDIS_URL` is set), `httpOnly`, `sameSite=strict`, `secure` in production |
-| App routes | `authservice.createAuthMiddlewareWithHandler({ onUnauthorized: 401 JSON })` on `/api/v1`; a `requireRole('admin')` helper on `/api/v1/admin` and `/admin/*` pages |
-| Core service routes | Registry `apiKeyAuth` (API keys, session tokens, `dtk_` tokens) + `servicesAuth.requireLogin=true` (admin session) |
+| App routes | `src/lib/auth.js`: `requireUser` (401 JSON), `requireAdmin` (403) and `requirePage` (redirect to login). They accept a Passport session, a `dtk_` personal token or a core session token. The core `createAuthMiddleware` only accepts Passport sessions |
+| Core service routes | Registry `apiKeyAuth` (API keys, session tokens, `dtk_` tokens) + `servicesAuth.requireLogin=true` (admin session). The core exempts `/services/filing/api/*` from the admin gate so members can download; the app restricts **writes** there to admins (`requireAdminForFilingWrites`) |
 | Uploads | multer `limits.fileSize` from settings; MIME/extension allow-list; filing `pathSafety`; filenames sanitised; never written outside `FILING_BASE_DIR` |
 | Outbound fetch | core fetching SSRF guard; http(s) only; size cap |
 | Secrets | `SESSION_SECRET`, `SETTINGS_SECRET`, `API_KEYS`, `ANTHROPIC_API_KEY` from env. The AI key override is stored encrypted in settings with `secret: true`. The process refuses to start in production without the required secrets. |

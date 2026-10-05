@@ -18,6 +18,10 @@
   },
   "jest": {
     "testEnvironment": "node",
+    "setupFiles": [
+      "<rootDir>/tests/helpers/jestSetup.js"
+    ],
+    "testTimeout": 20000,
     "forceExit": true,
     "detectOpenHandles": true,
     "testPathIgnorePatterns": [
@@ -30,7 +34,7 @@
       "app.js",
       "src/**/*.js",
       "activities/**/*.js",
-      "!src/views/js/**"
+      "!src/views/public/**"
     ]
   },
   "dependencies": {
@@ -40,6 +44,7 @@
     "express-async-errors": "^3.1.1",
     "express-session": "^1.17.3",
     "helmet": "^8.2.0",
+    "multer": "^2.4.0",
     "nooblyjs-core": "file:../nooblyjs-core",
     "passport": "^0.7.0"
   },

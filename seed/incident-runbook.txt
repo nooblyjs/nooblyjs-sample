@@ -1,0 +1,22 @@
+INCIDENT RUNBOOK
+================
+
+Use this runbook when a production service is degraded or down.
+
+1. DECLARE
+   - Post in the incident channel: what is broken, since when, who is leading.
+   - The incident lead owns communication; everyone else investigates.
+
+2. STABILISE
+   - Check /health/ready on every instance. A 503 means a critical dependency failed its live check.
+   - Check the logging dashboard for error spikes and the queueing dashboard for growing queues.
+   - Roll back the last release if the incident started within an hour of a deploy.
+
+3. COMMUNICATE
+   - Update the status page every 30 minutes, even when nothing has changed.
+
+4. RESOLVE
+   - Confirm recovery with the health probes and a manual check of the main user journey.
+
+5. LEARN
+   - Write a blameless post-incident review within five working days and add it to the Knowledge Hub with the tag "post-incident".

@@ -1,0 +1,9 @@
+term,definition
+Activity,A script run in a worker thread by the working service. It receives data and returns a result.
+Provider,One implementation of a service such as memory or redis. Chosen when the service is created.
+Service registry,The singleton that creates services and injects their dependencies.
+Workflow,An ordered list of activity steps run by the workflow service. Each step receives the previous steps' output.
+Queue,A named first-in first-out list of jobs in the queueing service.
+Topic,A named channel in the notifying service. Subscribers receive every message published to it.
+Snapshot,A saved copy of in-memory state written to the filing service so it survives restarts.
+Digest,A daily summary of new documents published to the digest.ready topic.

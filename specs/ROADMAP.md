@@ -61,7 +61,7 @@ The roadmap is ordered so that **each phase adds core services only after the se
 
 ---
 
-## Phase 1 — Accounts and document library (MVP core, 4–5 days)
+## Phase 1 — Accounts and document library (MVP core, 4–5 days) — ✅ done 2026-10-05
 
 **Goal:** signed-in users can upload, list, view, download, edit and delete documents.
 
@@ -77,6 +77,12 @@ The roadmap is ordered so that **each phase adds core services only after the se
 | Jest: repo and service unit tests; supertest authorisation matrix | — |
 
 **Exit criteria:** FR-AUTH-1/3/4 and FR-DOC-1…6 pass. Documents stay `queued`, because there is no pipeline yet.
+
+**Outcome:**
+- Delivered as planned, plus FR-AUTH-5 (personal `dtk_` tokens work on `/api/v1`).
+- Admin-only writes on `/services/filing/api`, because the core lets any signed-in user upload or remove files there.
+- Demo content loads into an empty library on boot (`SEED_DEMO_CONTENT=false` turns it off), so `npm run seed` is no longer needed in Phase 6.
+- Known limitation until Phase 4: document metadata is in memory, so after a restart only the demo content comes back. Uploaded files stay on disk but are not listed.
 
 ---
 
@@ -153,7 +159,7 @@ The roadmap is ordered so that **each phase adds core services only after the se
 |---|
 | Coverage ≥ 60 % (`coverageThreshold`); tests write only to `.temp/` |
 | Playwright: page smoke (no CSP violations, phone and desktop), main journey, admin pages |
-| `npm run seed` loads the demo documents in `seed/` (committed to the repo, added in Phase 1) so every core dashboard shows activity |
+| Demo content (loaded on boot since Phase 1) extended so every core dashboard shows activity |
 | Dockerfile (`node:24-alpine`, non-root, `HEALTHCHECK /health/live`, `.application` volume); refuses to start in production without secrets |
 | GitHub Actions: coverage on Node 22 and 24, UI tests, `npm audit --omit=dev --audit-level=high`, Docker build + boot check |
 | README: 5-minute quickstart, a "where each service is used" table linking to source files, and how to fork the template |

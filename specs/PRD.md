@@ -81,9 +81,9 @@ Priority: **P0** = MVP, **P1** = full release, **P2** = stretch.
 
 | ID | Requirement | Pri |
 |---|---|---|
-| FR-AUTH-1 | Users sign in at the built-in `/services/authservice/views/login.html`. After login they are redirected to the app home page (`loginSuccessRedirectUrl`). | P0 |
-| FR-AUTH-2 | Self-registration is behind a settings flag (`app.allowRegistration`). When it is off, users join through invitations (`/services/authservice/api/invitations`). | P1 |
-| FR-AUTH-3 | Roles: `admin` has full access, including the operations console. `member` can use the library. Route guards use `authservice.createAuthMiddleware()` / `createAuthMiddlewareWithHandler()`. | P0 |
+| FR-AUTH-1 | Users sign in at the built-in `/services/authservice/views/login.html`. After login they are redirected to `/library` (`loginSuccessRedirectUrl`). | P0 |
+| FR-AUTH-2 | New users join through invitations: they request one on the built-in request-invitation page and an admin approves it in `/services/authservice`. (The core always rejects direct registration, so there is no self-registration setting.) | P1 |
+| FR-AUTH-3 | Roles: `admin` has full access, including the operations console. Members (the core's default `user` role) can use the library. App guards (`src/lib/auth.js`) accept a Passport session, a `dtk_` personal token or a core session token. | P0 |
 | FR-AUTH-4 | On first boot, a default admin `admin@localhost` exists. Its password comes from `DEFAULT_ADMIN_PASSWORD`, or from the 0600 bootstrap file that the core writes. | P0 |
 | FR-AUTH-5 | Users can create personal API tokens (`/services/authservice/api/profile/tokens`) and call the app API with them. | P1 |
 | FR-AUTH-6 | Admins manage users and roles through the built-in auth dashboard at `/services/authservice`. | P1 |
@@ -156,7 +156,7 @@ Priority: **P0** = MVP, **P1** = full release, **P2** = stretch.
 
 | ID | Requirement | Pri |
 |---|---|---|
-| FR-SET-1 | Settings groups: `app` (name, allowRegistration), `library` (maxUploadMb, allowedTypes), `pipeline` (drainBatch, drainIntervalSec), `digest` (cron, enabled), `ai` (enabled, model, apiKey — **secret**). | P0 |
+| FR-SET-1 | Settings groups: `app` (name), `library` (maxUploadMb, allowedTypes), `pipeline` (drainBatch, drainIntervalSec), `digest` (cron, enabled), `ai` (enabled, model, apiKey — **secret**). | P0 |
 | FR-SET-2 | Admins edit settings in the embedded `SettingsUIManager` on `/admin/settings`. Secret values are masked. | P1 |
 | FR-SET-3 | Changes take effect without a restart where possible. Example: changing the digest cron calls `scheduling.update()`. | P1 |
 
