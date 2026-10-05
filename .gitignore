@@ -147,3 +147,14 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Noobly Knowledge Hub
+# Runtime data (files, auth, encrypted settings, logs, snapshots)
+.application/
+# Test and tooling output
+.temp/
+# Dev TLS certificates
+certs/
+*.key
+*.crt
+*.pem

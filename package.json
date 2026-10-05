@@ -1,0 +1,51 @@
+{
+  "name": "nooblyjs-application-sample",
+  "version": "0.1.0",
+  "description": "Noobly Knowledge Hub: a sample team knowledge base that uses every nooblyjs-core service with its default provider.",
+  "private": true,
+  "license": "ISC",
+  "type": "commonjs",
+  "main": "app.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node ./app.js",
+    "dev": "nodemon --watch ./src --watch ./app.js --watch ./activities ./app.js",
+    "dev:noauth": "ALLOW_NOAUTH=1 nodemon --watch ./src --watch ./app-noauth.js ./app-noauth.js",
+    "test": "jest",
+    "coverage": "jest --coverage"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "forceExit": true,
+    "detectOpenHandles": true,
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/tests/ui/",
+      "<rootDir>/.temp/"
+    ],
+    "coverageDirectory": ".temp/coverage",
+    "collectCoverageFrom": [
+      "app.js",
+      "src/**/*.js",
+      "activities/**/*.js",
+      "!src/views/js/**"
+    ]
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.1",
+    "express": "^4.21.2",
+    "express-async-errors": "^3.1.1",
+    "express-session": "^1.17.3",
+    "helmet": "^8.2.0",
+    "nooblyjs-core": "file:../nooblyjs-core",
+    "passport": "^0.7.0"
+  },
+  "devDependencies": {
+    "jest": "^30.0.3",
+    "nodemon": "^3.1.10",
+    "supertest": "^7.1.4"
+  }
+}

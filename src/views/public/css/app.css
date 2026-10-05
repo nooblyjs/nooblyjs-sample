@@ -1,0 +1,67 @@
+/*
+ * Knowledge Hub app styles. Layered after the NooblyJS design system
+ * (/services/css/styles.css) and core chrome (/services/css/core.css);
+ * colours come from their tokens.
+ */
+
+/* The app has no sidebar: one column under the topbar. */
+.core-app.kh-app {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.kh-app .core-brand {
+  width: auto;
+}
+
+.kh-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--on-ink);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* Inline code on the dark hero keeps the hero's text colour. */
+.core-page-hero code {
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.14);
+  color: inherit;
+}
+
+.kh-service {
+  height: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.kh-service .kh-service-name {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.kh-service .kh-service-meta {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.kh-service.is-planned {
+  background: var(--surface-sunken);
+}
+
+.kh-links li + li {
+  margin-top: 6px;
+}
+
+@media (max-width: 768px) {
+  .kh-app .core-main {
+    padding: 20px 16px 40px;
+  }
+}
