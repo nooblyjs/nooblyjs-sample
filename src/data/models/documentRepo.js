@@ -100,7 +100,10 @@ class DocumentRepo extends appDataBase {
     const { tag, owner, status, q } = filters;
     const records = await this.getDataService().listAll(this.containerName);
     const needle = q ? q.toLowerCase() : null;
+    // Reverse insertion order first so ties on createdAt (same ms) still
+    // list the newest document first; sort() is stable.
     return records
+      .reverse()
       .filter((record) => !tag || record.tags.includes(tag))
       .filter((record) => !owner || record.ownerEmail === owner)
       .filter((record) => !status || record.status === status)

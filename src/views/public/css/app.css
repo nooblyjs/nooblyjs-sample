@@ -132,3 +132,93 @@
     display: none;
   }
 }
+
+/* Header navigation and notification bell */
+.kh-nav {
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+  min-width: 0;
+}
+
+.kh-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--core-topbar-ink);
+  opacity: 0.75;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.kh-nav-link:hover,
+.kh-nav-link[aria-current="page"] {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--core-topbar-ink);
+}
+
+.kh-bell {
+  position: relative;
+}
+
+.kh-bell-count {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--on-ink);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* Document preview and stats */
+.kh-preview {
+  max-height: 480px;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.kh-activity-type {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Workflow manager (core WorkflowManagerUI) */
+.kh-embed {
+  min-height: 420px;
+}
+
+@media (max-width: 768px) {
+  .kh-nav-label {
+    display: none;
+  }
+
+  .kh-nav-link {
+    padding: 6px 8px;
+  }
+
+  .kh-app .core-brand .name small {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .kh-app .core-brand .name {
+    display: none;
+  }
+}

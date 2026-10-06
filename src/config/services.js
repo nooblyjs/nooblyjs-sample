@@ -71,10 +71,12 @@ function waitForAuthStorage(eventEmitter) {
  * @param {!Object} serviceRegistry The initialised nooblyjs-core registry.
  * @param {{dataRoot: string, env: !Object}} config Runtime paths and env.
  * @return {{logger: !Object, settings: !Object, cache: !Object,
- *     dataService: !Object, filing: !Object, authservice: !Object,
- *     authReady: !Promise<void>, filesDir: string}}
+ *     queue: !Object, notifying: !Object, dataService: !Object,
+ *     working: !Object, workflow: !Object, filing: !Object,
+ *     authservice: !Object, authReady: !Promise<void>, filesDir: string,
+ *     workDir: string, activitiesDir: string}}
  */
-function createCoreServices(serviceRegistry, { dataRoot, env }) {
+function createCoreServices(serviceRegistry, { dataRoot, env, rootDir }) {
   // Level 0 — logging
   const logger = serviceRegistry.logger(DEFAULT_PROVIDERS.logging);
 
@@ -84,11 +86,29 @@ function createCoreServices(serviceRegistry, { dataRoot, env }) {
     filepath: path.join(dataRoot, 'settings', 'settings.enc.json')
   });
 
-  // Level 1 — caching: document detail cache (doc:{id}).
+  // Level 1 — caching: document detail cache (doc:{id}), unread counters.
   const cache = serviceRegistry.cache(DEFAULT_PROVIDERS.caching);
+
+  // Level 1 — queueing: the 'ingest' queue between upload and the pipeline.
+  const queue = serviceRegistry.queue(DEFAULT_PROVIDERS.queueing);
+
+  // Level 1 — notifying: pipeline topics (document.ingested, …).
+  const notifying = serviceRegistry.notifying(DEFAULT_PROVIDERS.notifying);
 
   // Level 2 — dataservice: document metadata and the activity log.
   const dataService = serviceRegistry.dataService(DEFAULT_PROVIDERS.dataservice);
+
+  // Level 2 — working: runs activities/*.js in worker threads. Created before
+  // workflow so the workflow receives this configured instance.
+  const activitiesDir = path.join(rootDir, 'activities');
+  const working = serviceRegistry.working(DEFAULT_PROVIDERS.working, { activitiesFolder: activitiesDir });
+
+  // Level 3 — workflow: the 'ingest-document' pipeline. Run history keeps
+  // every step's input and output, so it is capped.
+  const workflow = serviceRegistry.workflow(DEFAULT_PROVIDERS.workflow, { maxExecutionsPerWorkflow: 200 });
+
+  // Scratch space for pipeline steps (text travels between steps as files).
+  const workDir = path.join(dataRoot, 'work');
 
   // Level 3 — filing: document files on disk. Never the app root, which would
   // expose .env and .application/data through the filing API.
@@ -106,7 +126,22 @@ function createCoreServices(serviceRegistry, { dataRoot, env }) {
   });
   const authReady = waitForAuthStorage(serviceRegistry.getEventEmitter());
 
-  return { logger, settings, cache, dataService, filing, authservice, authReady, filesDir };
+  return {
+    logger,
+    settings,
+    cache,
+    queue,
+    notifying,
+    dataService,
+    working,
+    workflow,
+    filing,
+    authservice,
+    authReady,
+    filesDir,
+    workDir,
+    activitiesDir
+  };
 }
 
 /**

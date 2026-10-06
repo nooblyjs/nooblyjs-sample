@@ -29,6 +29,16 @@ The tick-activity + callback pattern (ARCHITECTURE §8.3) is viable as designed.
 - Activities resolve packages from **their own location**. The sample must therefore list `pdf-parse` as a direct dependency, because the core's copy is not resolvable from `activities/`. Require `pdf-parse/lib/pdf-parse.js`, not the package root: its `index.js` runs debug code when it has no parent module.
 - The working service polls its queue about once a second, so each pipeline step costs at least ~1 s.
 
+## Phase 2 findings
+
+| Finding | Effect |
+|---|---|
+| Small PDFs fail with "bad XRef entry" **only inside worker threads**. In the worker, `fs.readFile` returned the PDF as a slice 8 bytes into a shared 64 KB buffer pool, and pdf.js reads the whole underlying `ArrayBuffer` from byte 0. Larger files get their own allocation, so they worked | `extract-text` passes `new Uint8Array(buffer)` (a copy that owns its memory) to pdf-parse |
+| The workflow service stores every step's `inputData` and `outputData` in its run history (default 1,000 runs per workflow) | Steps exchange file paths, not text; history capped at 200 runs (`maxExecutionsPerWorkflow`) |
+| `notifying.notify()` calls subscribers synchronously and does not await them | Subscribers catch their own errors; an escaped async error would become an unhandled rejection and shut the app down |
+| `workflow.executeWorkflow()` resolves with the failed run record instead of throwing | `IngestService` checks `run.status` and finds the failed step in `run.stepExecutions` |
+| The core workflow manager UI loads from `/services/workflow/scripts`, which needs no login | The admin workflows page embeds it; its API calls use the admin's session |
+
 ## Additional findings during Phase 0
 
 | Finding | Effect |

@@ -3,8 +3,9 @@
  * calls this before src/routes and src/views, with the same options object.
  *
  * Attaches to options.context:
- *   domain       { documents, activity, library, seed }
- *   domainReady  Promise that resolves once containers exist.
+ *   domain       { documents, activity, notifications, ingest, library, seed }
+ *   domainReady  Promise that resolves once containers, topics and the
+ *                ingest workflow exist.
  */
 
 'use strict';
@@ -13,6 +14,8 @@ const path = require('node:path');
 const DocumentRepo = require('../data/models/documentRepo');
 const ActivityRepo = require('../data/models/activityRepo');
 const LibraryService = require('./modules/libraryService');
+const { NotificationService } = require('./modules/notificationService');
+const { IngestService } = require('./modules/ingestService');
 const { SeedService } = require('./modules/seedService');
 
 /**
@@ -23,7 +26,9 @@ const { SeedService } = require('./modules/seedService');
  */
 function createDomain(type, options, eventEmitter) {
   const context = options.context;
-  const { logger, dataService, filing, cache, settings } = context.services;
+  const {
+    logger, dataService, filing, cache, settings, queue, notifying, workflow, filesDir, workDir, activitiesDir
+  } = context.services;
 
   // Repositories get the app's own data service and logger as dependencies
   // (appDataBase reads them from options.dependencies).
@@ -31,7 +36,11 @@ function createDomain(type, options, eventEmitter) {
   const documents = new DocumentRepo(repoOptions, eventEmitter);
   const activity = new ActivityRepo(repoOptions, eventEmitter);
 
-  const library = new LibraryService({ documents, activity, filing, cache, settings, logger });
+  const notifications = new NotificationService({ notifying, activity, cache, logger });
+  const ingest = new IngestService({
+    queue, workflow, documents, filing, cache, settings, notifications, logger, filesDir, workDir, activitiesDir
+  });
+  const library = new LibraryService({ documents, activity, filing, cache, settings, logger, ingest });
   const seed = new SeedService({
     library,
     documents,
@@ -39,8 +48,9 @@ function createDomain(type, options, eventEmitter) {
     seedDir: path.join(context.rootDir, 'seed')
   });
 
-  context.domain = { documents, activity, library, seed };
-  context.domainReady = Promise.all([documents.init(), activity.init()]);
+  context.domain = { documents, activity, notifications, ingest, library, seed };
+  context.domainReady = Promise.all([documents.init(), activity.init()])
+    .then(() => Promise.all([notifications.init(), ingest.init()]));
 }
 
 module.exports = createDomain;

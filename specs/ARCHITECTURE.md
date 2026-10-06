@@ -279,37 +279,40 @@ Browser ─POST /api/v1/documents (multipart)──▶ routes/documents
     measuring.add / logger.info                            ─┘
   ◀── 202 { id, status:'queued' }
 
-IngestService.drain()   ← triggered right after enqueue (setImmediate) and by schedule 'ingest-drain'
-  loop up to pipeline.drainBatch: item = queue.dequeue('ingest')
+IngestService.drain()   ← triggered right after enqueue (setImmediate) and, from Phase 4, by schedule 'ingest-drain'
+  loop: dequeue up to pipeline.drainBatch items, run them concurrently, repeat until empty
     dataService.update(status:'processing')
     run = await workflow.executeWorkflow('ingest-document',
-            { docId, filePath: <absolute path under FILING_BASE_DIR>, mime })
+            { docId, sourcePath: <absolute path under FILING_BASE_DIR>, extension, workDir, maxChars })
          └─ working → worker_threads: extract-text → normalise-text → analyse-text
+            (each step writes text to workDir/{docId}.*.txt and returns only paths and stats)
     if run.status === 'completed':
-        filing.create('library/{id}/extracted.txt', text)
+        filing.create('library/{id}/extracted.txt', <read from the normalise step's textPath>)
         dataService.update(status:'ready', stats)
-        searching.add(id, {id,title,tags,body:text}, 'documents'); cache.delete('search:*' via generation bump)
+        (Phase 3) searching.add(id, {id,title,tags,body:text}, 'documents'); bump the search cache generation
         if ai.enabled → queue.enqueue('ai-summaries', {docId})
         notifying.notify('document.ingested', {docId, ownerEmail})
         measuring.add('ingest.duration.ms', ms); measuring.add('ingest.success', 1)
-    else: dataService.update(status:'failed', error: safe); notifying.notify('document.failed', …)
+    else: dataService.update(status:'failed', error: <safe message for the failed step>); notifying.notify('document.failed', …)
+    finally: delete the run's scratch files
 ```
 
 ### 8.2 Worker-thread boundary (important)
 
 `working` runs each step in a `worker_thread` that loads its **own** copy of the registry. Its in-memory services (dataservice, cache, queue) are **empty and not shared** with the main process. Therefore:
 
-- Activities in `activities/` are **pure**. They receive `{ ...input, steps:[…previous outputs] }` and return plain JSON.
-- Activities may read the file system (the `local` filing base dir is a real path, passed in as `filePath`), and they may use pure libraries such as `pdf-parse`.
-- **All side effects run in the main process** after `executeWorkflow` resolves, or in scheduling callbacks.
+- Activities in `activities/` receive `{ ...input, steps:[…previous outputs] }` and return plain JSON. They never touch services.
+- They may read the source file (the `local` filing base dir is a real path, passed in as `sourcePath`) and read and write **scratch files under `workDir`**. The workflow keeps every step's input and output in its run history, so large data (document text) travels as scratch files, never inside step data.
+- **All application side effects run in the main process** after `executeWorkflow` resolves, or in scheduling callbacks. The main process deletes scratch files after each run.
+- Pure helpers live in `activities/lib/` and are unit-tested without worker threads.
 
 Activity contract:
 
 ```js
 // activities/analyse-text.js
 module.exports.run = async (data) => {
-  const text = data.steps.at(-1).data.text;
-  return { text, words: countWords(text), readingMin: …, keywords: topKeywords(text, 10) };
+  const { textPath } = data.steps.at(-1).data;          // written by normalise-text
+  return analyseText(await fs.readFile(textPath, 'utf8')); // { words, readingMinutes, keywords, preview }
 };
 ```
 

@@ -86,7 +86,7 @@ The roadmap is ordered so that **each phase adds core services only after the se
 
 ---
 
-## Phase 2 — Ingestion pipeline and notifications (4–5 days)
+## Phase 2 — Ingestion pipeline and notifications (4–5 days) — ✅ done 2026-10-05
 
 **Goal:** uploads are processed asynchronously into `ready` documents, and users are told when that happens.
 
@@ -100,6 +100,13 @@ The roadmap is ordered so that **each phase adds core services only after the se
 | Admin `/admin/workflows` embedding `WorkflowManagerUI` | workflow (UI) |
 
 **Exit criteria:** FR-ING-1…5 and FR-NTF-1…3 pass. An integration test uploads a `.md` and a `.pdf` and sees both reach `ready` with stats. A corrupt PDF ends `failed` with a safe error.
+
+**Outcome:**
+- Delivered as planned. The pipeline drains as soon as a document is queued; the scheduled `ingest-drain` safety net stays in Phase 4. FR-ING-6 (pipeline metrics) moves to Phase 4 with measuring.
+- **Text travels between steps as scratch files, not step data.** The workflow service stores every step's input and output in its run history, so passing document text would keep several copies of every document in memory and, later, in snapshots. Run history is also capped at 200 runs.
+- **Small PDFs failed only inside worker threads** ("bad XRef entry"). Node serves small files as slices of a shared buffer pool, and pdf.js reads the whole underlying buffer from byte 0. The activity now passes a copy (see spikes.md).
+- The document page shows the text preview and stats, polls while a document is processing, and offers Retry for failed documents. The header (navigation, notification bell) is now rendered once by `shell.js`.
+- `workflow` brings `scheduling` and `measuring` up as dependencies, so 13 of 16 services now run; scheduling and measuring get their own features in Phase 4.
 
 ---
 

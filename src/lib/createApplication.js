@@ -170,7 +170,7 @@ async function createApplication(options = {}) {
   app.use('/services/filing/api', (req, res, next) =>
     (guards ? guards.requireAdminForFilingWrites(req, res, next) : next()));
 
-  const services = createCoreServices(serviceRegistry, { dataRoot, env });
+  const services = createCoreServices(serviceRegistry, { dataRoot, env, rootDir });
   const { logger, settings, cache, dataService, filing } = services;
 
   if (generated) {
@@ -245,6 +245,9 @@ async function createApplication(options = {}) {
     logger,
     context,
     async close() {
+      // Let in-flight pipeline runs and notification handlers finish first.
+      await context.domain?.ingest.stop();
+      await context.domain?.notifications.idle();
       await serviceRegistry.shutdown();
       await sessionStore.close();
     }

@@ -1,7 +1,7 @@
 /**
  * @fileoverview Shared browser helpers for signed-in pages: API calls, the
- * header (user, admin link, sign out) and small formatting utilities.
- * Exposed as window.KH.
+ * header (navigation, notification bell, user, sign out) and small
+ * formatting utilities. Exposed as window.KH.
  */
 
 'use strict';
@@ -106,31 +106,119 @@
     return el('span', 'badge kh-tag', tag);
   }
 
+  /** Navigation links; adminOnly links are hidden from members. */
+  const NAV = [
+    { href: '/library', icon: 'bi-journal-text', label: 'Library' },
+    { href: '/activity', icon: 'bi-clock-history', label: 'Activity' },
+    { href: '/admin/workflows', icon: 'bi-diagram-3', label: 'Workflows', adminOnly: true }
+  ];
+
+  const UNREAD_POLL_MS = 15000;
+
   /**
-   * Fills the header from /api/v1/me and wires sign-out.
+   * Renders the header into <header data-kh-header data-section="…">.
+   * @param {!HTMLElement} header Header element.
+   * @param {!Object} me The /api/v1/me response.
+   */
+  function renderHeader(header, me) {
+    const user = me.user;
+    header.className = 'navbar core-topbar';
+
+    const brand = el('a', 'core-brand');
+    brand.href = '/library';
+    const logo = el('span', 'kh-logo');
+    logo.setAttribute('aria-hidden', 'true');
+    logo.appendChild(el('i', 'bi bi-journal-text'));
+    const name = el('span', 'name', me.appName);
+    name.appendChild(el('small', '', header.dataset.section || ''));
+    brand.append(logo, name);
+
+    const nav = el('nav', 'kh-nav');
+    nav.setAttribute('aria-label', 'Main');
+    NAV.filter((item) => !item.adminOnly || user.isAdmin).forEach((item) => {
+      const link = el('a', 'kh-nav-link');
+      link.href = item.href;
+      link.title = item.label;
+      if (location.pathname === item.href) link.setAttribute('aria-current', 'page');
+      link.append(el('i', 'bi ' + item.icon), el('span', 'kh-nav-label', item.label));
+      nav.appendChild(link);
+    });
+
+    const actions = el('div', 'core-topbar-actions');
+    const bell = el('a', 'core-icon-btn kh-bell');
+    bell.href = '/activity';
+    bell.title = 'Notifications';
+    bell.appendChild(el('i', 'bi bi-bell'));
+    const count = el('span', 'kh-bell-count d-none');
+    count.setAttribute('data-unread', '');
+    bell.appendChild(count);
+    actions.appendChild(bell);
+
+    if (user.isAdmin) {
+      const dashboards = el('a', 'core-icon-btn');
+      dashboards.href = '/services/';
+      dashboards.title = 'Service dashboards';
+      dashboards.appendChild(el('i', 'bi bi-grid-3x3-gap'));
+      actions.appendChild(dashboards);
+    }
+
+    const userBox = el('div', 'core-user');
+    const words = user.fullName.match(/[\p{L}\p{N}]+/gu) || ['?'];
+    userBox.append(
+      el('span', 'kh-user-name', user.fullName),
+      el('div', 'av', words.map((word) => word[0]).join('').slice(0, 2).toUpperCase())
+    );
+    actions.appendChild(userBox);
+
+    if (!me.noAuth) {
+      const logout = el('button', 'core-icon-btn');
+      logout.type = 'button';
+      logout.title = 'Sign out';
+      logout.appendChild(el('i', 'bi bi-box-arrow-right'));
+      logout.addEventListener('click', async () => {
+        await fetch('/services/authservice/api/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
+        window.location.href = LOGIN_PAGE;
+      });
+      actions.appendChild(logout);
+    }
+
+    header.replaceChildren(brand, nav, actions);
+  }
+
+  /**
+   * Updates the bell with the unread count.
+   * @param {number} unread Unread notifications.
+   */
+  function setUnread(unread) {
+    document.querySelectorAll('[data-unread]').forEach((badge) => {
+      badge.textContent = unread > 99 ? '99+' : String(unread);
+      badge.classList.toggle('d-none', unread === 0);
+      badge.parentElement.setAttribute('aria-label', unread + ' unread notifications');
+    });
+  }
+
+  /** Fetches the unread count; failures are ignored (the next poll retries). */
+  async function refreshUnread() {
+    try {
+      setUnread((await api('/api/v1/activity/unread')).unread);
+    } catch (error) {
+      console.warn('Unread count unavailable', error);
+    }
+  }
+
+  /**
+   * Loads the signed-in user, renders the header and starts the unread poll.
    * @return {Promise<!Object>} The /me response.
    */
   async function initShell() {
     const me = await api('/api/v1/me');
-    const user = me.user;
-    document.querySelectorAll('[data-app-name]').forEach((node) => { node.textContent = me.appName; });
-    document.querySelectorAll('[data-user-name]').forEach((node) => { node.textContent = user.fullName; });
-    document.querySelectorAll('[data-user-initials]').forEach((node) => {
-      const words = user.fullName.match(/[\p{L}\p{N}]+/gu) || ['?'];
-      node.textContent = words.map((word) => word[0]).join('').slice(0, 2).toUpperCase();
-    });
-    document.querySelectorAll('[data-admin-only]').forEach((node) => {
-      node.classList.toggle('d-none', !user.isAdmin);
-    });
-    document.querySelectorAll('[data-logout]').forEach((button) => {
-      button.classList.toggle('d-none', Boolean(me.noAuth));
-      button.addEventListener('click', async () => {
-        await fetch('/services/authservice/api/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
-        window.location.href = LOGIN_PAGE;
-      });
-    });
+    const header = document.querySelector('[data-kh-header]');
+    if (header) renderHeader(header, me);
+    document.title = document.title.replace('Knowledge Hub', me.appName);
+    refreshUnread();
+    setInterval(refreshUnread, UNREAD_POLL_MS);
     return me;
   }
 
-  window.KH = { api, el, showAlert, hideAlert, formatBytes, formatDate, statusBadge, tagBadge, initShell };
+  window.KH = { api, el, showAlert, hideAlert, formatBytes, formatDate, statusBadge, tagBadge, initShell, setUnread };
 })();

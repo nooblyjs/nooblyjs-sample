@@ -19,9 +19,11 @@
   const filterOwner = document.getElementById('filterOwner');
   const filterStatus = document.getElementById('filterStatus');
 
+  const POLL_MS = 4000;
   let me = null;
   let offset = 0;
   let loadedTags = false;
+  let pollTimer = null;
 
   /** @return {!URLSearchParams} Query for the current filters and page. */
   function buildQuery() {
@@ -75,6 +77,7 @@
    * @param {boolean} append Append to the list instead of replacing it.
    */
   async function load(append) {
+    clearTimeout(pollTimer);
     if (!append) offset = 0;
     try {
       const result = await api('/api/v1/documents?' + buildQuery());
@@ -91,6 +94,11 @@
       emptyEl.classList.toggle('d-none', result.total > 0);
       loadMoreEl.classList.toggle('d-none', offset >= result.total);
       hideAlert(pageAlert);
+
+      // Refresh while documents on the first page are still being processed.
+      if (offset <= PAGE_SIZE && result.items.some((d) => d.status === 'queued' || d.status === 'processing')) {
+        pollTimer = setTimeout(() => load(false), POLL_MS);
+      }
     } catch (error) {
       showAlert(pageAlert, error.message);
     }

@@ -3,10 +3,12 @@
  * Mounted by the core appservice; uses options.context.domain.library.
  *
  *   GET    /api/v1/documents              list (tag, owner, status, q, limit, offset)
- *   POST   /api/v1/documents              upload (multipart: file, title?, tags?)
+ *   POST   /api/v1/documents              upload (multipart: file, title?, tags?) → 202, queued
  *   GET    /api/v1/documents/:id          detail (+ canEdit, recent activity)
  *   PATCH  /api/v1/documents/:id          edit title/tags (owner or admin)
  *   DELETE /api/v1/documents/:id          delete (owner or admin)
+ *   POST   /api/v1/documents/:id/retry    re-queue a failed document (owner or admin)
+ *   GET    /api/v1/documents/:id/text     start of the extracted text (?maxChars)
  *   GET    /api/v1/documents/:id/download file download
  */
 
@@ -102,7 +104,8 @@ function createDocumentRoutes(type, options, eventEmitter) {
       title: req.body.title,
       tags: req.body.tags
     });
-    res.status(201).json(record);
+    // Accepted: the ingestion pipeline processes the document in the background.
+    res.status(202).json(record);
   }));
 
   router.get('/:id', idParam, handle(async (req, res) => {
@@ -126,6 +129,15 @@ function createDocumentRoutes(type, options, eventEmitter) {
   router.delete('/:id', idParam, handle(async (req, res) => {
     await library.remove(req.appUser, req.params.id);
     res.status(204).end();
+  }));
+
+  router.post('/:id/retry', idParam, handle(async (req, res) => {
+    res.status(202).json(await library.retry(req.appUser, req.params.id));
+  }));
+
+  router.get('/:id/text', idParam, handle(async (req, res) => {
+    const maxChars = parseLimit(req.query.maxChars, { defaultValue: 20000, max: 100000 });
+    res.json(await library.getText(req.params.id, maxChars));
   }));
 
   router.get('/:id/download', idParam, handle(async (req, res) => {

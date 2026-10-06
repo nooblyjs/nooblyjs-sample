@@ -4,7 +4,7 @@ A sample team knowledge base built on [`nooblyjs-core`](../nooblyjs-core). It us
 
 - **Product:** [specs/PRD.md](specs/PRD.md)
 - **Architecture:** [specs/ARCHITECTURE.md](specs/ARCHITECTURE.md)
-- **Roadmap:** [specs/ROADMAP.md](specs/ROADMAP.md) (Phases 0–1 done; Phase 2 next)
+- **Roadmap:** [specs/ROADMAP.md](specs/ROADMAP.md) (Phases 0–2 done; Phase 3 next)
 - **Phase 0 spike results:** [specs/spikes.md](specs/spikes.md)
 
 ## Quick start
@@ -24,6 +24,9 @@ npm start                 # http://localhost:3000
 ```
 
 - **Library:** `http://localhost:3000/library`. Sign in, then upload, filter, open, edit, download and delete documents. Nine demo documents (`seed/`) are loaded into an empty library on startup; set `SEED_DEMO_CONTENT=false` to start empty.
+- **Processing:** each upload is queued and run through the `ingest-document` workflow in worker threads: extract text (including PDFs), normalise it, and compute stats and keywords. Documents move from *queued* to *ready* (or *failed*, with a Retry button), and their page shows a text preview.
+- **Activity:** `/activity` is the team feed. The bell in the header counts your unread notifications (your documents becoming ready or failing).
+- **Admin:** `/admin/workflows` embeds the core workflow manager, showing the pipeline and its run history.
 - **Home page:** `http://localhost:3000/` shows which of the 16 core services are running, and with which provider.
 - **Service dashboards:** `http://localhost:3000/services/` requires an admin login. The default admin is `admin@localhost`. Its password is `DEFAULT_ADMIN_PASSWORD` if you set one; otherwise it is generated on first boot into `.application/data/auth/INITIAL_ADMIN_PASSWORD.txt`. Delete that file after logging in.
 - **Health:** `/health/live`, `/health/ready`.
@@ -50,7 +53,9 @@ npm start                 # http://localhost:3000
 | `src/config/services.js` | **The only place providers are chosen** |
 | `src/config/settingsSchema.js` | Settings groups and defaults (encrypted settings service) |
 | `src/routes/`, `src/views/` | Mounted automatically by the core **appservice** (each top-level `.js` exports `(type, options, eventEmitter)`) |
-| `activities/` | Worker-thread activities for the working, workflow and scheduling services (from Phase 2) |
+| `activities/` | Pipeline steps run in worker threads by the working service; pure helpers in `activities/lib/` |
+| `src/services/modules/ingestService.js` | Queue → workflow → apply results (ready/failed, extracted text, notifications) |
+| `src/services/modules/notificationService.js` | Topics, subscribers, activity feed entries, unread counters |
 | `src/data/models/` | Record shapes and validation, `DocumentRepo`, `ActivityRepo` |
 | `src/services/` | Domain layer (`index.js` mounts it; classes live in `modules/`) |
 | `src/lib/auth.js` | `/api/v1` and page guards (session, `dtk_` token, session token) |

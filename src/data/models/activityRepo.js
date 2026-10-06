@@ -30,16 +30,18 @@ class ActivityRepo extends appDataBase {
   /**
    * Records an activity.
    * @param {{type: string, actor: string, docId: (string|undefined),
-   *     title: (string|undefined), message: string}} entry
+   *     title: (string|undefined), recipient: (string|undefined),
+   *     message: string}} entry `recipient` is the user a notification is for.
    * @return {Promise<!Object>} The stored record.
    */
-  async record({ type, actor, docId = null, title = null, message }) {
+  async record({ type, actor, docId = null, title = null, recipient = null, message }) {
     const record = {
       id: crypto.randomUUID(),
       type,
       actor,
       docId,
       title,
+      recipient,
       message,
       createdAt: new Date().toISOString()
     };
@@ -49,13 +51,19 @@ class ActivityRepo extends appDataBase {
 
   /**
    * Lists recent activity, newest first.
-   * @param {{docId: (string|undefined), limit: (number|undefined)}=} options
+   * @param {{docId: (string|undefined), user: (string|undefined),
+   *     limit: (number|undefined)}=} options `user` keeps entries the user
+   *     did or that were sent to them.
    * @return {Promise<!Array<!Object>>} Records.
    */
-  async list({ docId, limit = 50 } = {}) {
+  async list({ docId, user, limit = 50 } = {}) {
     const records = await this.getDataService().listAll(this.containerName);
+    // listAll() returns insertion order and sort() is stable, so reversing
+    // first keeps the newest record first when timestamps tie (same ms).
     return records
+      .reverse()
       .filter((record) => !docId || record.docId === docId)
+      .filter((record) => !user || record.actor === user || record.recipient === user)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit)
       .map((record) => ({ ...record }));

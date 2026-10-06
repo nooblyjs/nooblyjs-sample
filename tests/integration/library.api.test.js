@@ -17,7 +17,7 @@ async function signIn(application, email, role) {
   return agent;
 }
 
-describe('library API (Phase 1)', () => {
+describe('library API', () => {
   let application;
   let alice; // member, owner of the test document
   let bob; // member
@@ -34,7 +34,7 @@ describe('library API (Phase 1)', () => {
       .field('title', 'Alice notes')
       .field('tags', 'notes, team')
       .attach('file', path.join(SEED, 'getting-started.md'))
-      .expect(201);
+      .expect(202);
     docId = res.body.id;
   });
 
@@ -73,7 +73,9 @@ describe('library API (Phase 1)', () => {
       expect(list.body.limits.allowedTypes).toContain('pdf');
 
       const detail = await bob.get(`/api/v1/documents/${docId}`).expect(200);
-      expect(detail.body).toMatchObject({ title: 'Alice notes', tags: ['notes', 'team'], status: 'queued', canEdit: false });
+      expect(detail.body).toMatchObject({ title: 'Alice notes', tags: ['notes', 'team'], canEdit: false });
+      // The ingestion pipeline processes it in the background (Phase 2).
+      expect(['queued', 'processing', 'ready']).toContain(detail.body.status);
       expect(detail.body.activity[0].type).toBe('document.uploaded');
 
       const file = await bob.get(`/api/v1/documents/${docId}/download`).expect(200);
@@ -91,9 +93,15 @@ describe('library API (Phase 1)', () => {
       await bob.get(`/api/v1/documents/${docId}/download`).expect(200);
     });
 
-    it('can open the library and document pages', async () => {
+    it('can open the library, document and activity pages, but not admin pages', async () => {
       await bob.get('/library').expect(200).expect('Content-Type', /html/);
       await bob.get(`/doc/${docId}`).expect(200);
+      await bob.get('/activity').expect(200);
+      await bob.get('/admin/workflows').expect(403);
+    });
+
+    it('cannot retry someone else\'s document', async () => {
+      await bob.post(`/api/v1/documents/${docId}/retry`).expect(403);
     });
   });
 
@@ -149,6 +157,12 @@ describe('library API (Phase 1)', () => {
   });
 
   describe('admins', () => {
+    it('can open admin pages', async () => {
+      await admin.get('/admin/workflows').expect(200);
+      const res = await request(application.app).get('/admin/workflows').expect(302);
+      expect(res.headers.location).toMatch(/login\.html/);
+    });
+
     it('can edit and delete anyone\'s document', async () => {
       await admin.patch(`/api/v1/documents/${docId}`).send({ tags: ['reviewed'] }).expect(200);
       await admin.delete(`/api/v1/documents/${docId}`).expect(204);

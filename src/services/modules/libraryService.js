@@ -4,6 +4,7 @@
  * Composes several core services through direct registry calls:
  * filing (file bytes), dataservice via DocumentRepo/ActivityRepo (metadata
  * and activity log), caching (document detail) and settings (upload limits).
+ * New and retried documents go to the ingestion pipeline (IngestService).
  */
 
 'use strict';
@@ -11,6 +12,7 @@
 const crypto = require('node:crypto');
 const { ClientError } = require('nooblyjs-core/src/shared/utils/httpErrors');
 const {
+  DOCUMENT_STATUS,
   extensionOf,
   sanitizeFilename,
   titleFromFilename,
@@ -24,9 +26,12 @@ const BYTES_PER_MB = 1024 * 1024;
 class LibraryService {
   /**
    * @param {{documents: !Object, activity: !Object, filing: !Object,
-   *     cache: !Object, settings: !Object, logger: !Object}} deps
+   *     cache: !Object, settings: !Object, logger: !Object,
+   *     ingest: (?Object|undefined)}} deps `ingest` queues documents for
+   *     processing; without it documents stay queued.
    */
-  constructor({ documents, activity, filing, cache, settings, logger }) {
+  constructor({ documents, activity, filing, cache, settings, logger, ingest = null }) {
+    this.ingest = ingest;
     this.documents = documents;
     this.activity = activity;
     this.filing = filing;
@@ -110,7 +115,47 @@ class LibraryService {
       filename,
       sizeBytes: record.sizeBytes
     });
+    await this.ingest?.enqueue(record.id);
     return record;
+  }
+
+  /**
+   * Queues a failed document for processing again.
+   * @param {{email: string, fullName: string, isAdmin: boolean}} user Caller.
+   * @param {string} id Document id.
+   * @return {Promise<!Object>} The queued record.
+   * @throws {ClientError} 403/404, or 409 when the document has not failed.
+   */
+  async retry(user, id) {
+    const record = await this.requireModifiable_(user, id);
+    if (record.status !== DOCUMENT_STATUS.failed) {
+      throw new ClientError(409, 'Only failed documents can be retried');
+    }
+    const updated = await this.documents.update(id, { status: DOCUMENT_STATUS.queued, error: null });
+    await this.cache.delete(`doc:${id}`);
+    await this.activity.record({
+      type: 'document.retried',
+      actor: user.email,
+      docId: id,
+      title: record.title,
+      message: `${user.fullName} retried processing "${record.title}"`
+    });
+    this.logger.info('[LibraryService] Document retried', { docId: id, by: user.email });
+    await this.ingest?.enqueue(id);
+    return updated;
+  }
+
+  /**
+   * Returns the start of a processed document's extracted text.
+   * @param {string} id Document id.
+   * @param {number} maxChars Characters to return.
+   * @return {Promise<{text: ?string, truncated: boolean}>} text is null
+   *     until the document has been processed.
+   */
+  async getText(id, maxChars) {
+    const record = await this.get(id);
+    const result = this.ingest ? await this.ingest.readText(record, maxChars) : null;
+    return result || { text: null, truncated: false };
   }
 
   /**
@@ -185,9 +230,11 @@ class LibraryService {
    */
   async remove(user, id) {
     const record = await this.requireModifiable_(user, id);
-    await this.filing.delete(record.path).catch((error) => {
-      if (error.code !== 'ENOENT') throw error;
-    });
+    for (const filePath of [record.path, record.textPath].filter(Boolean)) {
+      await this.filing.delete(filePath).catch((error) => {
+        if (error.code !== 'ENOENT') throw error;
+      });
+    }
     await this.documents.remove(id);
     await this.cache.delete(`doc:${id}`);
     await this.activity.record({

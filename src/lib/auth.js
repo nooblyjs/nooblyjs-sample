@@ -44,7 +44,7 @@ function toAppUser(record) {
  * @param {{authservice: !Object, noAuth: boolean, logger: ?Object}} deps
  * @return {{identify: function(!Object): !Promise<?Object>,
  *     requireUser: !Function, requireAdmin: !Function, requirePage: !Function,
- *     requireAdminForFilingWrites: !Function}}
+ *     requireAdminPage: !Function, requireAdminForFilingWrites: !Function}}
  */
 function createAuthGuards({ authservice, noAuth, logger = null }) {
   /**
@@ -109,6 +109,22 @@ function createAuthGuards({ authservice, noAuth, logger = null }) {
   }
 
   /**
+   * Admin page guard: anonymous browsers go to the login page, members get a
+   * 403 page.
+   */
+  async function requireAdminPage(req, res, next) {
+    const user = await identify(req);
+    if (!user) {
+      return res.redirect(`${LOGIN_PAGE}?returnUrl=${encodeURIComponent(req.originalUrl)}`);
+    }
+    if (!user.isAdmin) {
+      return res.status(403).type('text/plain').send('Admin role required');
+    }
+    req.appUser = user;
+    return next();
+  }
+
+  /**
    * The core lets any authenticated caller use /services/filing/api so that
    * members can download files, but that also includes upload and remove.
    * Writes there would bypass the library's ownership checks and metadata, so
@@ -125,7 +141,7 @@ function createAuthGuards({ authservice, noAuth, logger = null }) {
     return next();
   }
 
-  return { identify, requireUser, requireAdmin, requirePage, requireAdminForFilingWrites };
+  return { identify, requireUser, requireAdmin, requirePage, requireAdminPage, requireAdminForFilingWrites };
 }
 
 module.exports = { createAuthGuards, toAppUser, DEV_USER, LOGIN_PAGE };

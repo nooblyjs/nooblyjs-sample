@@ -114,6 +114,33 @@ describe('LibraryService', () => {
     });
   });
 
+  describe('retry', () => {
+    it('re-queues a failed document for its owner, and refuses other cases', async () => {
+      const enqueued = [];
+      library.ingest = { enqueue: async (id) => { enqueued.push(id); } };
+      const { id } = await library.upload(OWNER, file('a.md'));
+      expect(enqueued).toEqual([id]);
+
+      await expect(library.retry(OWNER, id)).rejects.toMatchObject({ statusCode: 409 });
+      await library.documents.update(id, { status: 'failed', error: 'x' });
+      await expect(library.retry(OTHER, id)).rejects.toMatchObject({ statusCode: 403 });
+
+      const queued = await library.retry(OWNER, id);
+      expect(queued).toMatchObject({ status: 'queued', error: null });
+      expect(enqueued).toEqual([id, id]);
+      expect((await activity.list())[0].type).toBe('document.retried');
+    });
+  });
+
+  it('remove() also deletes the extracted text', async () => {
+    const { id, path } = await library.upload(OWNER, file('a.md'));
+    await filing.create(`library/${id}/extracted.txt`, 'text');
+    await library.documents.update(id, { textPath: `library/${id}/extracted.txt` });
+    await library.remove(OWNER, id);
+    expect([...filing.files.keys()]).not.toContain(path);
+    expect(filing.files.size).toBe(0);
+  });
+
   it('list() pages results and returns all tags', async () => {
     await library.upload(OWNER, file('a.md'), { tags: 'x' });
     await library.upload(OWNER, file('b.md'), { tags: 'y' });

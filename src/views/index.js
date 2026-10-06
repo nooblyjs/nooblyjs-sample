@@ -27,6 +27,8 @@ function createViews(type, options) {
 
   app.get('/library', guards.requirePage, page('library.html'));
   app.get('/doc/:id', guards.requirePage, page('document.html'));
+  app.get('/activity', guards.requirePage, page('activity.html'));
+  app.get('/admin/workflows', guards.requireAdminPage, page('admin-workflows.html'));
 
   app.use(options.baseUrl || '/', express.static(path.join(__dirname, 'public')));
 }

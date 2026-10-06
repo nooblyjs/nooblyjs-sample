@@ -46,7 +46,8 @@
     "helmet": "^8.2.0",
     "multer": "^2.4.0",
     "nooblyjs-core": "file:../nooblyjs-core",
-    "passport": "^0.7.0"
+    "passport": "^0.7.0",
+    "pdf-parse": "^1.1.4"
   },
   "devDependencies": {
     "jest": "^30.0.3",

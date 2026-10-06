@@ -37,7 +37,8 @@ const SETTINGS_SCHEMA = Object.freeze({
     description: 'Ingestion pipeline',
     keys: {
       drainBatch: { default: 5, type: 'number', description: 'Queue items processed per drain' },
-      drainIntervalSec: { default: 10, type: 'number', description: 'Seconds between scheduled queue drains' }
+      drainIntervalSec: { default: 10, type: 'number', description: 'Seconds between scheduled queue drains' },
+      maxTextChars: { default: 500000, type: 'number', description: 'Maximum characters of extracted text kept per document' }
     }
   },
   digest: {

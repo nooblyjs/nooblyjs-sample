@@ -86,3 +86,24 @@ describe('ActivityRepo', () => {
     expect(await activity.list({ limit: 1 })).toHaveLength(1);
   });
 });
+
+describe('ordering with identical timestamps', () => {
+  it('lists the most recently added record first', async () => {
+    const activity = makeRepo(ActivityRepo);
+    await activity.init();
+    const spy = jest.spyOn(Date.prototype, 'toISOString').mockReturnValue('2026-01-01T00:00:00.000Z');
+    try {
+      await activity.record({ type: 'a', actor: 'x', message: 'first' });
+      await activity.record({ type: 'b', actor: 'x', message: 'second' });
+    } finally {
+      spy.mockRestore();
+    }
+    expect((await activity.list()).map((a) => a.message)).toEqual(['second', 'first']);
+
+    const repo = makeRepo(DocumentRepo);
+    await repo.init();
+    await repo.add(doc('a1', { createdAt: '2026-01-01T00:00:00.000Z' }));
+    await repo.add(doc('a2', { createdAt: '2026-01-01T00:00:00.000Z' }));
+    expect((await repo.list()).map((d) => d.id)).toEqual(['a2', 'a1']);
+  });
+});
